@@ -33,16 +33,14 @@ module tb_cpu();
     reg         mem_dbg = 1;
     reg         instr_dbg = 1;
 
+    // 0xC20000 : sector to read/write
+    // 0xC20002 : byte of sector to read/write
+    // 0xC20004 : out/in byte
+    // 0xC20005 : action
     reg [7:0]   fda [0:(512*16)-1];
-    reg [7:0]   fda_state;  // 0xC20000
-    reg [15:0]  fda_ndl_pos;
-    wire        fda_ndl_dwn;
-    wire        fda_ndl_wrt;
-    wire        fda_ndl_dat;
-
-    assign      fda_ndl_dwn = fda_state[0];
-    assign      fda_ndl_wrt = fda_state[1];
-    assign      fda_ndl_dat = fda_state[2];
+    reg [15:0]  fda_sect;
+    reg [15:0]  fda_bytn;
+    reg [7:0]   fda_bio;
 
     assign      ram_sel =   addr[23];
     assign      mem_addr =  addr[22:0];
@@ -117,7 +115,7 @@ module tb_cpu();
         if (!ix) begin
             if (wex) begin                
                 if (mem_dbg) $display("%h WEX_SIG%0d addr=%h val=%h", pc, ram_sel, mem_addr, wvx);
-                if (rom_high) begin
+                if (rom_high & ram_sel == 0) begin
                     if (rom_mad == 22'h20) begin
                         high_code = wvx[7:0];
                         high_code_x = 1;
@@ -125,14 +123,12 @@ module tb_cpu();
                 end
 
                 if (ram_sel) begin
-                    if (mem_addr == 23'h420000) begin
-                        fda_state = wvx[7:0];
-                    end
-                    else if (mem_addr == 23'h0C2000) begin
-
-                    end
-                    else if (mem_addr == 23'h420001) begin
-                        fda_ndl_pos = wvx;
+                    if (mem_addr == 23'h420000)
+                        fda_sect = wvx;
+                    else if (mem_addr == 23'h420002)
+                        fda_bytn = wvx;
+                    else if (mem_addr == 23'h420004) begin
+                        fda[(fda_sect * 512) + fda_bytn] = wvx[7:0];
                     end
                     else begin
                         if (r2x) begin
@@ -154,12 +150,8 @@ module tb_cpu();
 
                 if (mem_dbg) $display("%h REX_SIG%0d addr=%h",pc ,ram_sel, mem_addr);
                 if (ram_sel) begin
-                    if (mem_addr == 23'h420000) begin
-                        rvx = {8'h0, fda_state};
-                    end
-                    else if (mem_addr == 23'h420001) begin
-                        if (r2x) rvx = fda_ndl_pos;
-                        else rvx = {8'h0, fda_ndl_pos[7:0]};
+                    if (mem_addr == 23'h420004) begin
+                        rvx = {8'h00, fda[(fda_sect * 512) + fda_bytn]};
                     end
                     else begin
                         if (r2x) rvx = {ram[mem_addr], ram[mem_addr + 1]};
