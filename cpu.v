@@ -222,7 +222,7 @@ always @(posedge clk or posedge reset) begin
 
                         // 2. Determinar si es Load (S=0) o Store (S=1)
                         if (instr[7:4] == 4'h1) begin // Store
-                            wvx <= (instr[3:0] == 4'h2) ? jk : ((instr[3:0] == 4'h1) ? hi : {8'h00, ar});
+                            wvx <= get_reg16(instr[3:0]);
                             wex <= 1'b1;
                             state <= MEM_WRITE; // Ir a estado de escritura
                         end else if (instr[7:4] == 4'h0) begin // Load

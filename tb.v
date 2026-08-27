@@ -29,6 +29,7 @@ module tb_cpu();
     wire        rom_high;
     wire [21:0] rom_mad;
     reg  [15:0] sp; // 0x8C2000
+    reg  [15:0] upc;
 
     reg         mem_dbg = 1;
     reg         instr_dbg = 1;
@@ -65,12 +66,20 @@ module tb_cpu();
         .rfx    (rfx)
     );
 
-    always      #5 clk = ~clk;
+    always      #240 clk = ~clk; // 2.09 MHz
 
     always @(posedge clk) begin
         if (reset) begin
-            sp = 16'hBFD1;
+            sp = 16'hFFF0;
             pc = 24'h00FFF0;
+        end
+    end
+
+    always @(wex) begin
+        if (wex) begin
+            if (addr == 24'hB80000) begin
+                $write("%c", wvx[7:0]);
+            end
         end
     end
 
@@ -95,7 +104,8 @@ module tb_cpu();
     output [15:0] data;
     begin
         sp = sp + 2;
-        data = {ram[sp], ram[sp+1]};
+        data[15:8] = ram[sp];
+        data[7:0] = ram[sp+1];
     end
     endtask
 
@@ -151,6 +161,7 @@ module tb_cpu();
                 if (mem_dbg) $display("%h REX_SIG%0d addr=%h",pc ,ram_sel, mem_addr);
                 if (ram_sel) begin
                     if (mem_addr == 23'h420004) begin
+                        $display("fda read %h %h %h", fda_sect, fda_bytn, {8'h00, fda[(fda_sect * 512) + fda_bytn]});
                         rvx = {8'h00, fda[(fda_sect * 512) + fda_bytn]};
                     end
                     else begin
@@ -167,14 +178,18 @@ module tb_cpu();
 
         if (ix) begin
             if (rfx) begin
-                if (instr_dbg) $display("%h RET sp=%h", pc, sp);
+                if (instr_dbg)$write("%h RET sp=%h ", pc, sp);
 
-                popOfStack(pc[15:0]);
+                popOfStack(upc);
+                pc[15:0] = upc;
+                if (instr_dbg) $display("to=%h (%h)", pc, {ram[sp], ram[sp+1]});
+                if (pc[23]) instr = {ram[pc[22:0]], ram[pc[22:0]+1]};
+                else instr = {rom[pc], rom[pc+1]};
             end
             else if (jfx) begin
                 if (jfl) begin
-                    if (instr_dbg) $display("%h CALL %h", pc, sp);
-                    pushInStack(pc[15:0]);
+                    pushInStack(pc[15:0] + 2);
+                    if (instr_dbg) $display("%h CALL %h (%h)", pc, sp+2, {ram[sp+2], ram[sp+3]});
                 end
                 if (high_code_x) begin
                     if (instr_dbg) $display("%h JMP_FAR %0x", pc, high_code);
@@ -188,10 +203,14 @@ module tb_cpu();
                     if (jad[7]) begin
                         if (instr_dbg) $display("%h JMP_SIG step -%0d steps", pc, jad[6:0]);
                         pc = pc - (jad[6:0] + 2);
+                        if (pc[23]) instr = {ram[pc[22:0]], ram[pc[22:0]+1]};
+                        else instr = {rom[pc], rom[pc+1]};
                     end
                     else begin
                         if (instr_dbg) $display("%h JMP_SIG step +%0d steps", pc, jad[7:0]);
                         pc = (pc + jad) - 2;
+                        if (pc[23]) instr = {ram[pc[22:0]], ram[pc[22:0]+1]};
+                        else instr = {rom[pc], rom[pc+1]};
                     end
                 end
             end
@@ -208,15 +227,17 @@ module tb_cpu();
         pc = 0;
         rvx = 16'h0000;
         jmf = 0;
+        instr_dbg = 0;
+        mem_dbg = 0;
         $readmemh("test.hex", rom);
         $readmemh("test.hex", ram);
+        $readmemh("fda.hex", fda);
 
         instr = {rom[pc], rom[pc+1]};
         ie = 1;
 
-        #20 reset = 0;
-    
-        #700 $finish;
+        #2400        reset = 0;
+        #(240*25600)      $finish;
     end
 
 endmodule

@@ -2,37 +2,59 @@ ram_seg     equ 80h
 rom_seg     equ 00h
 high_rom    equ 40h
 seg_switch  equ 0020h
+video_seg   equ 0B8h
 
 fda_seg     equ 0C2h
-fda_sec     equ 0003h
-fda_byte    equ 0005h
+fda_sec     equ 0000h
+fda_bytn    equ 0002h
+fda_bio     equ 0004h
 
 reset:
-    mov e, fda_seg
-    lea hi, 1
+    lea hi, 0
+    mov d, ram_seg
+    lea fg, 0A000h
     call offs8 fda_read
-    store ebc, hi
+    lea fg, 0A000h
+    lea jk, 0
+.print:
+    load dfg, a
+    mov e, video_seg
+    lea bc, 0
+    store ebc, a
+    mov a, 1
+    addw fg, a
+    addw jk, a
+    lea hi, 512
+    cmpw hi, jk
+    jz offs8 .endpr
+    jmp offs8 .print
+.endpr:
 
 hang:
     jmp offs8 hang
 
 ; hi=sector read
+; fg=buffer
 fda_read:
-    call offs8 lba_gpos
+    mov e, fda_seg
+    lea bc, fda_sec
+    store ebc, hi
     lea jk, 0   ; byte 0
 .loop1:
-    lea fg, 512
-    cmpw fg, jk
-    jn offs8 .end
+    mov e, fda_seg
+    lea bc, fda_bytn
+    store ebc, jk
+    lea bc, fda_bio
+    load ebc, a
+    store dfg, a
+    lea hi, 512
+    cmpw hi, jk
+    jz offs8 .end
     mov a, 1
     addw jk, a
+    addw fg, a  ; inc byte
     jmp offs8 .loop1
 .end:
-    ret
-
-lba_gpos:
-    lea jk, 512 ; sector size
-    mul hi, jk  ; multiply
     ret
 
     reserve (0FFF0h-$)

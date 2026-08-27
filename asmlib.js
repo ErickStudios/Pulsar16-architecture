@@ -90,6 +90,7 @@ export class Context {
         this.currentIp = 0;
         this.currentLabel = 'start';
         this.result = [];
+        this.list = {};
     }
 }
 /** @param {Context} context  */
@@ -208,6 +209,9 @@ export function lineToInstr(line, context) {
         case 'dw': return 2;
         case 'dd': return 4;
         case 'dq': return 8;
+        case 'byte': return 1;
+        case 'word': return 2;
+
         }
     }
     function toBigEndianBytes(n, x) {
@@ -332,6 +336,8 @@ export function codeToInstrs(code) {
     lines.forEach(line => {
         let instr = lineToInstr(line, ctx);
         ctx.result.push(...instr);
+        if (!ctx.list[ctx.currentIp]) ctx.list[ctx.currentIp] = [];
+        ctx.list[ctx.currentIp].push({instr, line});
         ctx.currentIp += instr.length;
     })
     return ctx;
