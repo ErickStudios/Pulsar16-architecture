@@ -1,3 +1,7 @@
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2026 ErickCraftStudios-Markarian (Markarian)
+// Pulsar16 - open hardware
+
 module cpu(
     input              reset,     // reset
     input              clk,       // clock
