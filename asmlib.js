@@ -120,8 +120,8 @@ export function lineToInstr(line, context) {
         return null;
     }
     function lsGetId(name) {
-        if (name == 'load') return 0;
-        if (name == 'store') return 1;
+        if (name == 'lds') return 0;
+        if (name == 'str') return 1;
         return null;
     }
     function indexGetId(name) {
@@ -155,10 +155,16 @@ export function lineToInstr(line, context) {
     }
     function jmpGetId(name) {
         if (name == 'jmp') return 0;
-        if (name == 'call') return 1;
-        if (name == 'jz') return 2;
-        if (name == 'jn') return 3;
+        if (name == 'jwl') return 1;
+        if (name == 'jiz') return 2;
+        if (name == 'jin') return 3;
 
+        return null;
+    }
+    function bit16GetId(name) {
+        if (name == 'mul') return 0; 
+        if (name == 'adw') return 3;
+        if (name == 'tsw') return 2;
         return null;
     }
     function parseSyntx() {
@@ -234,26 +240,12 @@ export function lineToInstr(line, context) {
             consume();
             result.push(0x41, 0x00);
         }
-        else if (peek().value == 'cmpw') {
-            consume();
+        else if (bit16GetId(peek().value) !== null) {
+            let oSrc = bit16GetId(consume().value);
             let rDst = valueGetId(consume().value);
             expect(",")
             let rSrc = valueGetId(consume().value);
-            result.push(0x42, (rDst << 4) | rSrc);
-        }
-        else if (peek().value == 'addw') {
-            consume();
-            let rDst = valueGetId(consume().value);
-            expect(",")
-            let rSrc = valueGetId(consume().value);
-            result.push(0x43, (rDst << 4) | rSrc);
-        }
-        else if (peek().value == 'mul') {
-            consume();
-            let rDst = valueGetId(consume().value);
-            expect(",")
-            let rSrc = valueGetId(consume().value);
-            result.push(0x40, (rDst << 4) | rSrc);
+            result.push(0x40 | oSrc, (rDst << 4) | rSrc);
         }
         else if (jmpGetId(peek().value) !== null) {
             let oSrc = jmpGetId(consume().value);
@@ -277,7 +269,7 @@ export function lineToInstr(line, context) {
             let vSrc = valueGetId(consume().value);
             result.push(0x20 | rAddr, (oSrc << 4) | vSrc);
         }
-        else if (peek().value == 'lea') {
+        else if (peek().value == 'mvw') {
             consume();
             let xDupl = consume().value;
             expect(",");

@@ -10,23 +10,23 @@ fda_bytn    equ 0002h
 fda_bio     equ 0004h
 
 reset:
-    lea hi, 0
+    mvw hi, 0
     mov d, ram_seg
-    lea fg, 0A000h
-    call offs8 fda_read
-    lea fg, 0A000h
-    lea jk, 0
+    mvw fg, 0A000h
+    jwl offs8 fda_read
+    mvw fg, 0A000h
+    mvw jk, 0
 .print:
-    load dfg, a
+    lds dfg, a
     mov e, video_seg
-    lea bc, 0
-    store ebc, a
+    mvw bc, 0
+    str ebc, a
     mov a, 1
-    addw fg, a
-    addw jk, a
-    lea hi, 512
-    cmpw hi, jk
-    jz offs8 .endpr
+    adw fg, a
+    adw jk, a
+    mvw hi, 512
+    tsw hi, jk
+    jiz offs8 .endpr
     jmp offs8 .print
 .endpr:
 
@@ -37,30 +37,30 @@ hang:
 ; fg=buffer
 fda_read:
     mov e, fda_seg
-    lea bc, fda_sec
-    store ebc, hi
-    lea jk, 0   ; byte 0
+    mvw bc, fda_sec
+    str ebc, hi
+    mvw jk, 0   ; byte 0
 .loop1:
     mov e, fda_seg
-    lea bc, fda_bytn
-    store ebc, jk
-    lea bc, fda_bio
-    load ebc, a
-    store dfg, a
-    lea hi, 512
-    cmpw hi, jk
-    jz offs8 .end
+    mvw bc, fda_bytn
+    str ebc, jk
+    mvw bc, fda_bio
+    str ebc, a
+    str dfg, a
+    mvw hi, 512
+    tsw hi, jk
+    jiz offs8 .end
     mov a, 1
-    addw jk, a
-    addw fg, a  ; inc byte
+    adw jk, a
+    adw fg, a  ; inc byte
     jmp offs8 .loop1
 .end:
     ret
 
     reserve (0FFF0h-$)
     mov     d, high_rom
-    lea     bc, seg_switch
+    mvw     bc, seg_switch
     mov     a, rom_seg
-    store   dbc, a
+    str     dbc, a
     jmp     reset
     reserve (10000h-$)
